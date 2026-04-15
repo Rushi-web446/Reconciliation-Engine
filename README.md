@@ -162,55 +162,66 @@ Supports:
 
 ---
 
+
 ### 1️⃣ Run Reconciliation
 
+**POST** `/api/reconcile`
+
+#### Request Body
+
+```json
+{
+  "TIMESTAMP_TOLERANCE_SECONDS": 300,
+  "QUANTITY_TOLERANCE_PCT": 0.01
+}
 ```
-POST /api/reconcile
+
+#### Response
+
+```json
+{
+  "runId": "abc-123",
+  "summary": {
+    "matched": 20,
+    "conflicting": 2,
+    "unmatchedUser": 1,
+    "unmatchedExchange": 2
+  }
+}
 ```
 
 ---
 
 ### 2️⃣ Full Report
 
-```
-GET /api/report/:runId
-```
+**GET** `/api/report/:runId`
 
 ---
 
 ### 3️⃣ Summary
 
-```
-GET /api/report/:runId/summary
-```
+**GET** `/api/report/:runId/summary`
 
 ---
 
-### 4️⃣ Unmatched
+### 4️⃣ Unmatched Records
 
-```
-GET /api/report/:runId/unmatched
-```
+**GET** `/api/report/:runId/unmatched`
 
 ---
 
 ### 5️⃣ Invalid Rows
 
-```
-GET /api/report/:runId/invalid
-```
+**GET** `/api/report/:runId/invalid`
 
 ---
 
 ### 6️⃣ CSV Export (NEW)
 
-```
-GET /api/report/:runId/csv
-```
-
-👉 Downloads reconciliation report as CSV
+**GET** `/api/report/:runId/csv`
 
 ---
+
 
 ## 🗄️ Database Design
 
