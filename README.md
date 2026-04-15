@@ -1,6 +1,9 @@
 # 🧾 Transaction Reconciliation Engine
 
-A production-grade backend system that reconciles crypto transactions between user-reported data and exchange data.
+🚀 **Live API:**  
+https://reconciliation-engine-42pe.onrender.com/
+
+👉 All endpoints are accessible by appending `/api/...`
 
 ---
 
@@ -60,20 +63,9 @@ Each row is validated:
 - ❌ No row is dropped  
 - ✅ Invalid rows are stored with error reasons  
 
-Example:
-
-```json
-{
-  "transaction_id": "USR-018",
-  "errors": ["INVALID_TIMESTAMP"]
-}
-```
-
 ---
 
 ### 🔹 3. Data Normalization
-
-We standardize messy data:
 
 #### Asset Normalization
 
@@ -104,17 +96,8 @@ TRANSFER_OUT → TRANSFER + OUT
 
 ### 🔹 Why Normalization?
 
-Because raw data is inconsistent:
-
 ```
-BTC ≠ bitcoin ❌
-TRANSFER_IN ≠ TRANSFER_OUT ❌
-```
-
-After normalization:
-
-```
-Everything becomes comparable ✅
+Raw data is inconsistent → normalization makes it comparable
 ```
 
 ---
@@ -129,71 +112,33 @@ Match each **user transaction** with **exchange transaction**
 
 ---
 
-## 🧠 Step-by-Step Matching
+### 🧠 Matching Steps
+
+1. **Filter by Asset**
+2. **Filter by Type**
+   - BUY ↔ BUY  
+   - SELL ↔ SELL  
+   - TRANSFER_OUT ↔ TRANSFER_IN  
+3. **Apply Timestamp Tolerance**
+4. **Select Best Match**
+   - Minimum time difference  
+   - Then minimum quantity difference  
+5. **Categorize**
 
 ---
 
-### STEP 1: Filter by Asset
+### 📊 Categories
 
-```
-BTC ↔ BTC
-ETH ↔ ETH
-```
-
----
-
-### STEP 2: Filter by Type
-
-| User | Exchange | Match |
-|------|--------|------|
-| BUY | BUY | ✅ |
-| SELL | SELL | ✅ |
-| TRANSFER_OUT | TRANSFER_IN | ✅ |
+| Category | Meaning |
+|--------|--------|
+| MATCHED | Within tolerance |
+| CONFLICTING | Exists but differs beyond tolerance |
+| UNMATCHED_USER | Only in user |
+| UNMATCHED_EXCHANGE | Only in exchange |
 
 ---
 
-### STEP 3: Timestamp Tolerance
-
-```
-user_time ± tolerance (default 300 sec)
-```
-
-Example:
-
-```
-10:00:00 → range: 09:55:00 to 10:05:00
-```
-
----
-
-### STEP 4: Choose Best Match
-
-Among candidates:
-
-- Minimum time difference  
-- Then minimum quantity difference  
-
----
-
-### STEP 5: Categorization
-
----
-
-#### ✅ MATCHED
-
-```
-Within tolerance
-```
-
----
-
-#### ⚠️ CONFLICTING
-
-```
-Exists but differs beyond tolerance
-```
-
-Example:
+### 🔍 Explainable Results
 
 ```
 Quantity differs by 0.12% which exceeds tolerance (0.01%)
@@ -203,57 +148,13 @@ Fee mismatch: user=0.0015, exchange=0.002
 
 ---
 
-#### ❌ UNMATCHED_USER
-
-```
-No exchange transaction found
-```
-
----
-
-#### ❌ UNMATCHED_EXCHANGE
-
-```
-No user transaction found
-```
-
----
-
-## 🔍 Explainable Matching
-
-Each result includes reason:
-
-```json
-{
-  "category": "CONFLICTING",
-  "reason": "Quantity differs by 0.12% which exceeds tolerance (0.01%)"
-}
-```
-
-👉 This ensures auditability (important in fintech)
-
----
-
 ## ⚙️ Configuration
 
-Supports **multi-layer config**
+Supports:
 
-| Priority | Source |
-|--------|--------|
-| 1 | API body |
-| 2 | ENV |
-| 3 | Default |
-
----
-
-Example:
-
-```json
-{
-  "TIMESTAMP_TOLERANCE_SECONDS": 300,
-  "QUANTITY_TOLERANCE_PCT": 0.01
-}
-```
+- API input  
+- Environment variables  
+- Default fallback  
 
 ---
 
@@ -265,27 +166,6 @@ Example:
 
 ```
 POST /api/reconcile
-
-Body:
-{
-  "TIMESTAMP_TOLERANCE_SECONDS": 300,
-  "QUANTITY_TOLERANCE_PCT": 0.01
-}
-
-```
-
-Response:
-
-```json
-{
-  "runId": "abc-123",
-  "summary": {
-    "matched": 20,
-    "conflicting": 2,
-    "unmatchedUser": 1,
-    "unmatchedExchange": 2
-  }
-}
 ```
 
 ---
@@ -322,15 +202,25 @@ GET /api/report/:runId/invalid
 
 ---
 
+### 6️⃣ CSV Export (NEW)
+
+```
+GET /api/report/:runId/csv
+```
+
+👉 Downloads reconciliation report as CSV
+
+---
+
 ## 🗄️ Database Design
 
 ---
 
 ### Transaction Collection
 
-- raw → original CSV row  
-- normalized → cleaned row  
-- validation → errors  
+- raw  
+- normalized  
+- validation  
 
 ---
 
@@ -347,18 +237,17 @@ GET /api/report/:runId/invalid
 
 ---
 
-### ❌ Naive Approach
+### ❌ Naive
 
 ```
-Compare every user with every exchange
-→ O(N × M)
+O(N × M)
 ```
 
 ---
 
-### ✅ Optimized Approach
+### ✅ Optimized
 
-- Compound index:
+- Indexed on:
 
 ```
 (asset, type, timestamp)
@@ -366,15 +255,7 @@ Compare every user with every exchange
 
 ---
 
-### Matching Process:
-
-1. Filter by asset + type  
-2. Apply timestamp window  
-3. Search only relevant subset  
-
----
-
-### Complexity:
+### Complexity
 
 ```
 ≈ O(N log M)
@@ -382,34 +263,15 @@ Compare every user with every exchange
 
 ---
 
-### 🚀 Impact
-
-| Approach | Operations |
-|--------|----------|
-| Naive | 1e7 checks |
-| Optimized | ~100–1000 checks |
-
----
-
 ## ⚠️ Edge Cases Handled
 
-- Duplicate transaction IDs  
+- Duplicate IDs  
 - Missing timestamps  
 - Invalid timestamps  
 - Negative quantities  
 - Asset aliasing  
 - Transfer direction mismatch  
-- Rounding differences  
-
----
-
-## 🧠 Key Design Decisions
-
-- Store raw + normalized data (auditability)  
-- Use tolerance-based matching  
-- Use compound indexing for scale  
-- Use flexible schema for messy data  
-- Provide explainable results  
+- Rounding issues  
 
 ---
 
@@ -417,8 +279,7 @@ Compare every user with every exchange
 
 - Node.js  
 - Express.js  
-- MongoDB (Mongoose)  
-- CSV Parser  
+- MongoDB  
 
 ---
 
@@ -431,7 +292,7 @@ npm install
 Create `.env`:
 
 ```
-MONGO_URI=mongodb://127.0.0.1:27017/reconciliation_db
+MONGO_URI=your_mongodb_connection_string
 ```
 
 Run:
@@ -444,19 +305,12 @@ node server.js
 
 ## 🎯 Final Thoughts
 
-This system is designed for **real-world financial data challenges**:
+Designed for:
 
-- Messy data  
-- Inconsistent formats  
-- Audit requirements  
+- Messy real-world data  
+- Financial accuracy  
+- Auditability  
 - Scalability  
-
-It demonstrates:
-
-- Strong backend engineering  
-- Data processing pipelines  
-- Matching algorithms  
-- Production-level thinking  
 
 ---
 
